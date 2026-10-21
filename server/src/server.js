@@ -1,6 +1,7 @@
 import path from "path";
 import express from "express";
 import cookieParser from "cookie-parser";
+import csrf from "csurf";
 import { fileURLToPath } from "url";
 
 import authRoutes from "./routes/auth.routes.js";
@@ -16,6 +17,7 @@ const clientDistPath = path.resolve(currentDirectory, "../../client/dist");
 
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
+app.use(csrf({ cookie: true }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
@@ -27,6 +29,13 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api", (_req, res) => {
 	res.status(404).json({ error: "API route not found" });
+});
+
+app.use((error, _req, res, next) => {
+	if (error && error.code === "EBADCSRFTOKEN") {
+		return res.status(403).json({ error: "Invalid CSRF token" });
+	}
+	return next(error);
 });
 
 app.use(express.static(clientDistPath));
